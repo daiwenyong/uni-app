@@ -34,19 +34,33 @@
 								<view class='name'>{{$t(item.cate_name)}}</view>
 								<view class='line'></view>
 							</view>
+							
 							<view class='list acea-row'>
-								<block v-for="(itemn,indexn) in item.children" :key="indexn">
-									<navigator hover-class='none'
-										:url='"/pages/goods/goods_list/index?sid="+itemn.id+"&title="+itemn.cate_name'
-										class='item acea-row row-column row-middle'>
-										<view class='picture'>
-											<easy-loadimage mode="widthFix" :image-src="itemn.pic"></easy-loadimage>
-											<!-- <image src="/static/images/sort-img.png" v-else></image> -->
-										</view>
-										<view class='name line1'>{{$t(itemn.cate_name)}}</view>
-									</navigator>
-								</block>
+								<category-list :list="item.children" @change="id=>toView = id"></category-list>
+						
+								
 							</view>
+							<!-- 三级分类 -->
+							<view class='list acea-row three'>
+								<view v-for="three in item.threeChildren" style="width: 100%;">
+								<!-- 标题 -->
+								<view :id="'b'+three.id" style="font-weight: bold;padding: 20rpx 0;">{{three.name}}</view>
+								
+								<vew>
+									<view v-for="itemn in three.arr"  style="width:33.33%;display: inline-block;">
+										<navigator hover-class='none'
+											:url='"/pages/goods/goods_list/index?sid="+itemn.id+"&title="+itemn.cate_name'
+											class='item acea-row row-column row-middle'>
+											<view class='picture'>
+												<easy-loadimage mode="widthFix" :image-src="itemn.pic||pic"></easy-loadimage>
+											</view>
+											<view class='name line1'>{{$t(itemn.cate_name)}}</view>
+										</navigator>
+									</view>
+								</vew>
+							</view>
+							</view>
+							
 						</view>
 					</block>
 					<view :style='"height:"+(height-300)+"rpx;"' v-if="number<15"></view>
@@ -72,11 +86,13 @@
 	} from '@/api/public.js'
 	import pageFooter from '@/components/pageFooter/index.vue'
 	import tabBar from "@/pages/index/visualization/components/tabBar.vue";
+	import categoryList from './category_list.vue'
 	const app = getApp();
 	export default {
 		components: {
 			pageFooter,
-			tabBar
+			tabBar,
+			categoryList
 		},
 		props: {
 			isNew: {
@@ -104,7 +120,8 @@
 				// #ifdef APP-PLUS
 				pageHeight: app.globalData.windowHeight,
 				// #endif
-				lock: false
+				lock: false,
+				pic:'https://www.19lai.com/uploads/attach/2023/04/20230424/0c2d1ce986937842c7dde8396463f1a5.jpg'
 			}
 		},
 		computed: {
@@ -180,16 +197,31 @@
 				};
 			},
 			tap: function(index, id) {
+				// console.log(index,id)
 				this.toView = id;
 				this.navActive = index;
 				this.$set(this, 'lock', true);
+			},
+			formatData(data){
+				data.forEach(item=>{
+					const arr = item.children.map(i=>{
+						const obj = {}
+						obj.name = i.cate_name
+						obj.id = i.id 
+						obj.arr = i.twochildren
+						return obj
+					})
+					this.$set(item,'threeChildren',arr)
+				})
+				return data
 			},
 			getAllCategory: function() {
 				let that = this;
 				if (this.isNew || !uni.getStorageSync('CAT1_DATA')) {
 					getCategoryList().then(res => {
-						uni.setStorageSync('CAT1_DATA', res.data)
-						that.productList = res.data;
+						that.productList = that.formatData(res.data);
+						uni.setStorageSync('CAT1_DATA', that.productList)
+						
 						that.$nextTick(res => {
 							that.infoScroll();
 						})
@@ -200,6 +232,7 @@
 						that.infoScroll();
 					})
 				}
+				// that.productList = that.formatData(that.productList);
 			},
 			scroll: function(e) {
 				let scrollTop = e.detail.scrollTop;
@@ -319,7 +352,7 @@
 	// #endif
 
 	.productSort .aside {
-		width: 180rpx;
+		width: 190rpx;
 		height: 100%;
 		overflow: hidden;
 		background-color: #f7f7f7;
